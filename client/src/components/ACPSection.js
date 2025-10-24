@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './ACPSection.css';
-import axios from 'axios';
+import OpenAI from 'openai';
 
-const ACPSection = ({ title, value, onChange, sectionType }) => {
+const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isExplaining, setIsExplaining] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const speechSynthesisRef = useRef(null);
 
   // Get appropriate prompts for each section type
   const getExplainPrompt = () => {
@@ -32,12 +31,29 @@ const ACPSection = ({ title, value, onChange, sectionType }) => {
     setIsExplaining(true);
 
     try {
-      const response = await axios.post('/api/explain', {
-        prompt: getExplainPrompt(),
-        sectionType
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true // Required for browser use
       });
 
-      const explanation = response.data.explanation;
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a compassionate healthcare assistant helping people complete their Advanced Care Planning Guide. Provide clear, empathetic, and practical explanations.'
+          },
+          {
+            role: 'user',
+            content: getExplainPrompt()
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      });
+
+      const explanation = completion.choices[0].message.content;
 
       // Use Web Speech API to read the explanation aloud
       if ('speechSynthesis' in window) {
@@ -70,7 +86,11 @@ const ACPSection = ({ title, value, onChange, sectionType }) => {
 
     } catch (error) {
       console.error('Error getting explanation:', error);
-      alert('Failed to get explanation. Please try again.');
+      if (error.message.includes('API key')) {
+        alert('Invalid API key. Please check your OpenAI API key and try again.');
+      } else {
+        alert('Failed to get explanation. Please try again.');
+      }
       setIsExplaining(false);
     }
   };
@@ -103,7 +123,7 @@ const ACPSection = ({ title, value, onChange, sectionType }) => {
           // Stop all tracks
           stream.getTracks().forEach(track => track.stop());
 
-          // Send audio to backend for transcription
+          // Transcribe audio
           await transcribeAudio(audioBlob);
         };
 
@@ -125,22 +145,32 @@ const ACPSection = ({ title, value, onChange, sectionType }) => {
 
   const transcribeAudio = async (audioBlob) => {
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-      formData.append('sectionType', sectionType);
-
-      const response = await axios.post('/api/transcribe', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
       });
 
-      const transcript = response.data.transcript;
+      // Create a File object from the blob
+      const audioFile = new File([audioBlob], 'recording.webm', { type: audioBlob.type });
+
+      // Transcribe using Whisper
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: 'whisper-1',
+        language: 'en'
+      });
+
+      const transcript = transcription.text;
       onChange(transcript);
 
     } catch (error) {
       console.error('Error transcribing audio:', error);
-      alert('Failed to transcribe audio. Please try again.');
+      if (error.message.includes('API key')) {
+        alert('Invalid API key. Please check your OpenAI API key and try again.');
+      } else {
+        alert('Failed to transcribe audio. Please try again.');
+      }
     }
   };
 

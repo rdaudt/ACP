@@ -1,14 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ACPSection from './components/ACPSection';
-import axios from 'axios';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 function App() {
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
   const [beliefs, setBeliefs] = useState('');
   const [values, setValues] = useState('');
   const [wishes, setWishes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState(null);
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('openai_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setShowApiKeyInput(false);
+    }
+  }, []);
+
+  const handleSaveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('openai_api_key', apiKey.trim());
+      setShowApiKeyInput(false);
+    } else {
+      alert('Please enter a valid API key');
+    }
+  };
+
+  const handleChangeApiKey = () => {
+    setShowApiKeyInput(true);
+  };
+
+  const handleClearApiKey = () => {
+    localStorage.removeItem('openai_api_key');
+    setApiKey('');
+    setShowApiKeyInput(true);
+  };
 
   // Check if all sections are filled
   const allSectionsFilled = beliefs.trim() !== '' && values.trim() !== '' && wishes.trim() !== '';
@@ -18,16 +48,108 @@ function App() {
     setDownloadUrl(null);
 
     try {
-      const response = await axios.post('/api/update-pdf', {
-        beliefs,
-        values,
-        wishes
-      }, {
-        responseType: 'blob'
-      });
+      // Fetch the original PDF
+      const pdfResponse = await fetch('/myvoice-advancecareplanningguide.pdf');
+      const pdfBytes = await pdfResponse.arrayBuffer();
 
-      // Create a download URL for the PDF
-      const blob = new Blob([response.data], { type: 'application/pdf' });
+      // Load PDF document
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+
+      // Embed font
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const fontSize = 10;
+      const lineHeight = 12;
+
+      // Helper function to wrap text
+      function wrapText(text, maxWidth) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        words.forEach(word => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+          if (testWidth > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        });
+
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        return lines;
+      }
+
+      // Get pages
+      const pages = pdfDoc.getPages();
+
+      // Add content to appropriate pages
+      // Note: These coordinates may need adjustment based on the actual PDF structure
+
+      if (pages.length > 2) {
+        // Add Beliefs to page 3 (index 2)
+        const beliefsPage = pages[2];
+        const { height } = beliefsPage.getSize();
+        const maxWidth = 450;
+        const beliefsLines = wrapText(beliefs, maxWidth);
+
+        beliefsLines.forEach((line, index) => {
+          beliefsPage.drawText(line, {
+            x: 70,
+            y: height - 250 - (index * lineHeight),
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0)
+          });
+        });
+      }
+
+      if (pages.length > 3) {
+        // Add Values to page 4 (index 3)
+        const valuesPage = pages[3];
+        const { height } = valuesPage.getSize();
+        const maxWidth = 450;
+        const valuesLines = wrapText(values, maxWidth);
+
+        valuesLines.forEach((line, index) => {
+          valuesPage.drawText(line, {
+            x: 70,
+            y: height - 250 - (index * lineHeight),
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0)
+          });
+        });
+      }
+
+      if (pages.length > 4) {
+        // Add Wishes to page 5 (index 4)
+        const wishesPage = pages[4];
+        const { height } = wishesPage.getSize();
+        const maxWidth = 450;
+        const wishesLines = wrapText(wishes, maxWidth);
+
+        wishesLines.forEach((line, index) => {
+          wishesPage.drawText(line, {
+            x: 70,
+            y: height - 250 - (index * lineHeight),
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0)
+          });
+        });
+      }
+
+      // Save the modified PDF
+      const modifiedPdfBytes = await pdfDoc.save();
+
+      // Create download URL
+      const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       setDownloadUrl(url);
 
@@ -47,49 +169,89 @@ function App() {
       </header>
 
       <main className="App-main">
-        <ACPSection
-          title="My beliefs (what gives my life meaning)"
-          value={beliefs}
-          onChange={setBeliefs}
-          sectionType="beliefs"
-        />
-
-        <ACPSection
-          title="My values (what I care about in life)"
-          value={values}
-          onChange={setValues}
-          sectionType="values"
-        />
-
-        <ACPSection
-          title="My wishes (for future health care treatment, life support and life-prolonging medical interventions)"
-          value={wishes}
-          onChange={setWishes}
-          sectionType="wishes"
-        />
-
-        <div className="update-section">
-          <button
-            className="update-button"
-            onClick={handleUpdatePlan}
-            disabled={!allSectionsFilled || isUpdating}
-          >
-            {isUpdating ? 'Updating...' : 'Update the Advanced Care Plan'}
-          </button>
-
-          {downloadUrl && (
-            <div className="download-section">
-              <p className="success-message">Your Advanced Care Plan has been updated successfully!</p>
-              <a
-                href={downloadUrl}
-                download="my-advanced-care-plan.pdf"
-                className="download-link"
-              >
-                Download Updated Advanced Care Plan
-              </a>
+        {showApiKeyInput ? (
+          <div className="api-key-section">
+            <h2>Enter Your OpenAI API Key</h2>
+            <p className="api-key-info">
+              This app uses OpenAI's services for explanations and transcription.
+              Your API key is stored locally in your browser and never sent to any server except OpenAI.
+            </p>
+            <div className="api-key-input-group">
+              <input
+                type="password"
+                className="api-key-input"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-proj-..."
+              />
+              <button className="api-key-button" onClick={handleSaveApiKey}>
+                Save API Key
+              </button>
             </div>
-          )}
-        </div>
+            <p className="api-key-help">
+              Don't have an API key? <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">Get one from OpenAI</a>
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="api-key-status">
+              <p>API Key configured</p>
+              <button className="change-api-key-button" onClick={handleChangeApiKey}>
+                Change Key
+              </button>
+              <button className="clear-api-key-button" onClick={handleClearApiKey}>
+                Clear Key
+              </button>
+            </div>
+
+            <ACPSection
+              title="My beliefs (what gives my life meaning)"
+              value={beliefs}
+              onChange={setBeliefs}
+              sectionType="beliefs"
+              apiKey={apiKey}
+            />
+
+            <ACPSection
+              title="My values (what I care about in life)"
+              value={values}
+              onChange={setValues}
+              sectionType="values"
+              apiKey={apiKey}
+            />
+
+            <ACPSection
+              title="My wishes (for future health care treatment, life support and life-prolonging medical interventions)"
+              value={wishes}
+              onChange={setWishes}
+              sectionType="wishes"
+              apiKey={apiKey}
+            />
+
+            <div className="update-section">
+              <button
+                className="update-button"
+                onClick={handleUpdatePlan}
+                disabled={!allSectionsFilled || isUpdating}
+              >
+                {isUpdating ? 'Updating...' : 'Update the Advanced Care Plan'}
+              </button>
+
+              {downloadUrl && (
+                <div className="download-section">
+                  <p className="success-message">Your Advanced Care Plan has been updated successfully!</p>
+                  <a
+                    href={downloadUrl}
+                    download="my-advanced-care-plan.pdf"
+                    className="download-link"
+                  >
+                    Download Updated Advanced Care Plan
+                  </a>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       <footer className="App-footer">

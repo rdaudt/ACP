@@ -1,20 +1,12 @@
 {
   "name": "advanced-care-planning-app",
   "version": "1.0.0",
-  "description": "BC Advanced Care Planning Guide Assistant",
+  "description": "BC Advanced Care Planning Guide Assistant - Frontend Only",
   "private": true,
-  "workspaces": [
-    "client",
-    "server"
-  ],
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "client": "cd client && npm start",
-    "server": "cd server && npm run dev",
+    "start": "cd client && npm start",
     "build": "cd client && npm run build",
-    "install-all": "npm install && cd client && npm install && cd ../server && npm install"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+    "install": "cd client && npm install",
+    "deploy": "cd client && npm run deploy"
   }
 }
