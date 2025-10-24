@@ -195,35 +195,26 @@ This creates an optimized build in `client/build/` that can be deployed to any s
 
 ## Deploying to GitHub Pages
 
-This app is configured for easy deployment to GitHub Pages.
+This app is ready to deploy to GitHub Pages! The production build is in the `/docs` folder.
 
-### Quick Deploy
+### Enable GitHub Pages (One-Time Setup)
 
-```bash
-npm run deploy
-```
-
-This will build the app and deploy it to GitHub Pages automatically.
-
-### First-Time Setup
-
-1. Run the deploy command above
-2. Go to your GitHub repository settings
-3. Navigate to **Pages** in the sidebar
-4. Under **Source**, select:
-   - Branch: `gh-pages`
-   - Folder: `/ (root)`
-5. Click **Save**
+1. Go to https://github.com/rdaudt/ACP/settings/pages
+2. Under **Source**, select:
+   - **Branch**: Your current branch
+   - **Folder**: `/docs`
+3. Click **Save**
 
 Your app will be live at: **https://rdaudt.github.io/ACP/**
 
-For detailed deployment instructions, troubleshooting, and configuration options, see [DEPLOYMENT.md](DEPLOYMENT.md).
+It takes 1-3 minutes to go live after enabling GitHub Pages.
+
+For detailed instructions and troubleshooting, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Development
 
 - Start development server: `npm start`
-- Build for production: `npm run build`
-- Deploy to GitHub Pages: `npm run deploy`
+- Build for production: `npm run build` (outputs to `/docs` folder)
 - Install dependencies: `npm install`
 
 ## License

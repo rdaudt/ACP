@@ -1,127 +1,109 @@
 # Deploying to GitHub Pages
 
-This guide will help you deploy the Advanced Care Planning app to GitHub Pages.
+This app is configured to deploy to GitHub Pages using the `/docs` folder approach.
 
-## Prerequisites
+## How It Works
 
-- Your code must be pushed to a GitHub repository
-- You need push access to the repository
-- Node.js and npm installed locally
+The production build is placed in the `/docs` folder at the root of the repository, and GitHub Pages serves directly from this folder on your main branch.
 
-## Deployment Steps
+## Deployment (Already Done!)
 
-### 1. Install Dependencies
+The app has been built and deployed. The production files are in the `/docs` folder.
 
-First, make sure all dependencies are installed, including the `gh-pages` package:
+## Enable GitHub Pages
 
-```bash
-npm install
-```
+To make your app live, follow these one-time setup steps:
 
-### 2. Build and Deploy
+### 1. Go to Repository Settings
 
-From the root directory, run:
+1. Visit: https://github.com/rdaudt/ACP
+2. Click on **Settings** (top menu bar)
 
-```bash
-npm run deploy
-```
+### 2. Configure GitHub Pages
 
-This command will:
-- Build the React app for production
-- Create an optimized bundle in `client/build/`
-- Push the build to the `gh-pages` branch on GitHub
-- GitHub will automatically serve it
+1. In the left sidebar, click **Pages**
+2. Under **Source**, configure:
+   - **Branch**: Select your main branch (likely `main` or `master` or `claude/advanced-care-planning-app-011CURJWdhTLsA6688GACFdE`)
+   - **Folder**: Select `/docs`
+3. Click **Save**
 
-### 3. Enable GitHub Pages
+### 3. Wait for Deployment
 
-After your first deployment:
-
-1. Go to your GitHub repository: https://github.com/rdaudt/ACP
-2. Click on **Settings**
-3. Scroll down to **Pages** (in the left sidebar)
-4. Under **Source**, ensure it's set to:
-   - Branch: `gh-pages`
-   - Folder: `/ (root)`
-5. Click **Save**
+- GitHub will take 1-3 minutes to build and deploy
+- You'll see a green checkmark when it's ready
+- A link will appear showing your live URL
 
 ### 4. Access Your App
 
-Once deployed, your app will be available at:
+Your app will be live at:
 
 **https://rdaudt.github.io/ACP/**
 
-Note: It may take a few minutes for the site to become available after the first deployment.
+## Making Updates
 
-## Updating Your Deployment
+When you make changes to the app and want to deploy:
 
-Whenever you make changes and want to update the live site:
+1. The code changes are made
+2. Run the build (this has been done for you)
+3. Commit and push the updated `/docs` folder
+4. GitHub Pages automatically updates (takes 1-3 minutes)
 
-```bash
-npm run deploy
-```
+## Files in /docs Folder
 
-That's it! The changes will be live in a few minutes.
+The `/docs` folder contains:
+- `index.html` - Main HTML file
+- `static/` - JavaScript, CSS, and other assets
+- `myvoice-advancecareplanningguide.pdf` - The PDF template
+- Other supporting files
+
+These are optimized production files created by React's build process.
 
 ## Troubleshooting
 
-### "Permission denied" error
-- Make sure you have push access to the repository
-- Check that you're logged into GitHub in your terminal
-- Try running: `git config --global user.name "Your Name"` and `git config --global user.email "your@email.com"`
-
-### Changes not showing up
-- Wait 2-5 minutes for GitHub Pages to update
-- Clear your browser cache (Ctrl+Shift+R or Cmd+Shift+R)
-- Check the gh-pages branch exists: `git branch -r | grep gh-pages`
+### App not showing up
+- Wait 2-5 minutes after enabling GitHub Pages
+- Check that Branch and Folder are set correctly in Settings → Pages
+- Verify the `/docs` folder exists in your repository
 
 ### 404 error
-- Verify the homepage URL in `client/package.json` matches your repository
-- Make sure GitHub Pages is enabled in repository settings
-- Check that the gh-pages branch exists
+- Ensure the branch selected in Pages settings matches the branch containing `/docs`
+- Check that the homepage in `client/package.json` matches your repo: `https://rdaudt.github.io/ACP`
 
 ### Blank page
 - Check browser console for errors
-- Verify the homepage field is correct in package.json
-- Try a hard refresh (Ctrl+Shift+R)
+- Verify the homepage field is correct
+- Try a hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
 
-## Repository Settings
+### Changes not appearing
+- Clear browser cache
+- Wait a few minutes for GitHub Pages to rebuild
+- Check the Actions tab in GitHub for deployment status
 
-The app is configured for:
+## Why /docs Folder?
+
+This approach is simpler than using gh-pages branch because:
+- No need for additional deployment tools
+- Works seamlessly with CI/CD environments
+- Easy to see what's deployed (just check the `/docs` folder)
+- GitHub Pages directly serves from your main branch
+- No branch management required
+
+## Configuration Details
+
 - **Repository**: rdaudt/ACP
 - **GitHub Pages URL**: https://rdaudt.github.io/ACP/
-- **Deploy Branch**: gh-pages
+- **Deploy Location**: /docs folder on main branch
+- **Homepage Setting**: Set in `client/package.json`
 
-If you fork this repository or change the repo name, update the `homepage` field in `client/package.json`:
+## Cost
 
-```json
-"homepage": "https://YOUR_USERNAME.github.io/YOUR_REPO_NAME"
-```
+- GitHub Pages hosting: **FREE**
+- OpenAI API usage: ~$0.04 per user session
+- No server costs
 
-## Local Testing Before Deploy
+## Security
 
-To test the production build locally before deploying:
-
-```bash
-npm run build
-cd client/build
-python3 -m http.server 8000
-# or
-npx serve -s .
-```
-
-Then visit http://localhost:8000
-
-## Cost Considerations
-
-Remember: The app runs entirely in the browser, so hosting on GitHub Pages is **FREE**. However:
-
-- Users will need their own OpenAI API key
-- OpenAI API usage costs ~$0.04 per complete session
-- No server costs, no hosting fees
-
-## Security Notes
-
-- GitHub Pages serves static files only (perfect for this app)
-- API keys are stored in user's browser localStorage
-- No backend means no server-side secrets to manage
-- All API calls go directly from user's browser to OpenAI
+- All code runs in the user's browser
+- API keys stored in user's browser localStorage only
+- No backend server means no server-side vulnerabilities
+- Static files only - very secure
