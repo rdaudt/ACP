@@ -193,10 +193,37 @@ npm run build
 
 This creates an optimized build in `client/build/` that can be deployed to any static hosting service (Netlify, Vercel, GitHub Pages, etc.).
 
+## Deploying to GitHub Pages
+
+This app is configured for easy deployment to GitHub Pages.
+
+### Quick Deploy
+
+```bash
+npm run deploy
+```
+
+This will build the app and deploy it to GitHub Pages automatically.
+
+### First-Time Setup
+
+1. Run the deploy command above
+2. Go to your GitHub repository settings
+3. Navigate to **Pages** in the sidebar
+4. Under **Source**, select:
+   - Branch: `gh-pages`
+   - Folder: `/ (root)`
+5. Click **Save**
+
+Your app will be live at: **https://rdaudt.github.io/ACP/**
+
+For detailed deployment instructions, troubleshooting, and configuration options, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Development
 
 - Start development server: `npm start`
 - Build for production: `npm run build`
+- Deploy to GitHub Pages: `npm run deploy`
 - Install dependencies: `npm install`
 
 ## License
