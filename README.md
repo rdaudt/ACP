@@ -1,12 +1,14 @@
 # British Columbia Advanced Care Planning Guide App
 
-A web application to help users complete three important sections of the BC Advanced Care Planning Guide:
+A frontend-only web application to help users complete three important sections of the BC Advanced Care Planning Guide:
 - **My beliefs** (what gives my life meaning)
 - **My values** (what I care about in life)
 - **My wishes** (for future health care treatment, life support and life-prolonging medical interventions)
 
 ## Features
 
+- **Frontend-Only Architecture**: No backend server required - runs entirely in your browser
+- **Secure API Key Management**: Your OpenAI API key is stored locally in your browser and never sent to any server except OpenAI
 - **Explain Button**: Get AI-powered explanations of each section with text-to-speech
 - **Record Button**: Dictate your responses using voice recording with automatic transcription
 - **Smart PDF Update**: Automatically merge your responses into the official BC Advanced Care Planning Guide PDF
@@ -14,17 +16,11 @@ A web application to help users complete three important sections of the BC Adva
 
 ## Tech Stack
 
-### Frontend
 - React 18
+- OpenAI API (GPT-3.5-turbo for explanations, Whisper for transcription)
+- pdf-lib for client-side PDF manipulation
 - Web Speech API (text-to-speech)
 - MediaRecorder API (voice recording)
-- Axios for API calls
-
-### Backend
-- Node.js with Express
-- OpenAI API (GPT-3.5-turbo for explanations, Whisper for transcription)
-- pdf-lib for PDF manipulation
-- Multer for file uploads
 
 ## Prerequisites
 
@@ -44,63 +40,37 @@ cd ACP
 ### 2. Install dependencies
 
 ```bash
-npm run install-all
+npm install
 ```
 
-This will install dependencies for both the client and server.
+This will install all necessary dependencies for the React application.
 
-### 3. Set up environment variables
-
-Create a `.env` file in the `server` directory:
+### 3. Start the application
 
 ```bash
-cd server
-cp .env.example .env
+npm start
 ```
 
-Edit the `.env` file and add your OpenAI API key:
-
-```
-PORT=5000
-OPENAI_API_KEY=your_actual_openai_api_key_here
-```
-
-## Running the Application
-
-### Development Mode
-
-From the root directory, run both client and server simultaneously:
-
-```bash
-npm run dev
-```
-
-This will start:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:5000
-
-### Running Separately
-
-**Start the backend:**
-```bash
-npm run server
-```
-
-**Start the frontend:**
-```bash
-npm run client
-```
+The app will open in your browser at http://localhost:3000
 
 ## Usage Guide
 
-### 1. Explaining Sections
+### 1. Enter Your OpenAI API Key
+
+When you first open the app, you'll be prompted to enter your OpenAI API key:
+- Enter your API key (starts with `sk-proj-...` or `sk-...`)
+- Click "Save API Key"
+- Your key is stored securely in your browser's localStorage
+- You can change or clear your API key anytime using the buttons at the top
+
+### 2. Explaining Sections
 
 Click the **"Explain"** button in any section to:
 - Get an AI-generated explanation of what that section means
 - Hear the explanation read aloud automatically
 - Click "Stop Speaking" to interrupt the audio
 
-### 2. Recording Your Responses
+### 3. Recording Your Responses
 
 Click the **"Record"** button in any section to:
 1. Grant microphone permission when prompted
@@ -110,7 +80,7 @@ Click the **"Record"** button in any section to:
 
 You can also type directly into the text fields if preferred.
 
-### 3. Updating Your Care Plan
+### 4. Updating Your Care Plan
 
 Once all three sections are filled:
 1. The "Update the Advanced Care Plan" button will become enabled
@@ -123,7 +93,20 @@ Once all three sections are filled:
 - **Text-to-Speech**: Chrome, Edge, Firefox, Safari
 - **Recommended**: Latest version of Chrome or Edge for best experience
 
+## Security & Privacy
+
+- **No Backend Server**: Everything runs in your browser
+- **API Key Security**: Your OpenAI API key is stored only in your browser's localStorage
+- **No Data Collection**: No user data is sent to any server except OpenAI
+- **Local Processing**: PDF generation happens entirely in your browser
+- **Audio Privacy**: Audio recordings are transcribed directly by OpenAI and not stored
+
 ## Troubleshooting
+
+### API Key Issues
+- Make sure your API key is valid and active
+- Check that your OpenAI account has available credits
+- The key should start with `sk-proj-` or `sk-`
 
 ### Microphone Access Issues
 - Ensure you've granted microphone permission to your browser
@@ -135,87 +118,44 @@ Once all three sections are filled:
 - Ensure your device volume is turned up
 - Try a different browser if issues persist
 
-### API Errors
-- Verify your OpenAI API key is correctly set in `server/.env`
-- Check your OpenAI account has available credits
-- Review server logs for detailed error messages
-
 ### PDF Generation Issues
-- Ensure the `myvoice-advancecareplanningguide.pdf` file is in the root directory
-- Check server logs for PDF processing errors
+- The PDF file must be available in the public folder
+- Check browser console for PDF processing errors
 - Verify all three fields contain text before updating
 
 ## Project Structure
 
 ```
 ACP/
-├── client/                 # React frontend
+├── client/                              # React frontend application
 │   ├── public/
+│   │   ├── index.html
+│   │   └── myvoice-advancecareplanningguide.pdf  # Original PDF template
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   │   ├── ACPSection.js
+│   │   ├── components/                  # React components
+│   │   │   ├── ACPSection.js           # Section component with Explain/Record
 │   │   │   └── ACPSection.css
-│   │   ├── App.js
+│   │   ├── App.js                       # Main app component
 │   │   ├── App.css
 │   │   ├── index.js
 │   │   └── index.css
 │   └── package.json
-├── server/                # Node.js backend
-│   ├── server.js         # Express server
-│   ├── .env.example      # Environment template
-│   └── package.json
-├── myvoice-advancecareplanningguide.pdf  # Original PDF template
-├── package.json          # Root package.json
+├── myvoice-advancecareplanningguide.pdf # Original PDF (root)
+├── package.json                          # Root package.json
 └── README.md
 ```
-
-## API Endpoints
-
-### POST /api/explain
-Get AI explanation for a section
-```json
-{
-  "prompt": "explanation request",
-  "sectionType": "beliefs|values|wishes"
-}
-```
-
-### POST /api/transcribe
-Transcribe audio recording
-- Form data with 'audio' file and 'sectionType'
-
-### POST /api/update-pdf
-Generate updated PDF with user content
-```json
-{
-  "beliefs": "user beliefs text",
-  "values": "user values text",
-  "wishes": "user wishes text"
-}
-```
-
-### GET /api/health
-Health check endpoint
-
-## Security Considerations
-
-- Never commit your `.env` file with API keys
-- Keep your OpenAI API key secure
-- Review OpenAI usage and billing regularly
-- Audio files are automatically deleted after transcription
-- No user data is stored permanently on the server
 
 ## Customization
 
 ### Adjusting PDF Coordinates
 
-If the text doesn't appear in the correct location in your PDF, modify the coordinates in `server/server.js`:
+If the text doesn't appear in the correct location in your PDF, modify the coordinates in `client/src/App.js`:
 
 ```javascript
-// Example adjustment
+// Example adjustment in handleUpdatePlan function
 beliefsPage.drawText(line, {
-  x: 70,        // horizontal position
-  y: height - 250,  // vertical position
+  x: 70,              // horizontal position
+  y: height - 250,    // vertical position
   size: fontSize,
   // ...
 });
@@ -223,7 +163,7 @@ beliefsPage.drawText(line, {
 
 ### Changing AI Model
 
-To use a different OpenAI model, edit `server/server.js`:
+To use a different OpenAI model, edit `client/src/components/ACPSection.js`:
 
 ```javascript
 const completion = await openai.chat.completions.create({
@@ -243,6 +183,22 @@ Typical usage per user:
 - 3 recordings (2 min each): ~$0.036
 - **Total: ~$0.04 per complete session**
 
+## Building for Production
+
+To create a production build:
+
+```bash
+npm run build
+```
+
+This creates an optimized build in `client/build/` that can be deployed to any static hosting service (Netlify, Vercel, GitHub Pages, etc.).
+
+## Development
+
+- Start development server: `npm start`
+- Build for production: `npm run build`
+- Install dependencies: `npm install`
+
 ## License
 
 This project is provided as-is for helping individuals complete their Advanced Care Planning Guide.
@@ -252,11 +208,11 @@ This project is provided as-is for helping individuals complete their Advanced C
 For issues or questions:
 1. Check the Troubleshooting section
 2. Review browser console for errors
-3. Check server logs for backend issues
-4. Ensure all prerequisites are met
+3. Ensure all prerequisites are met
+4. Verify your OpenAI API key is valid
 
 ## Acknowledgments
 
 - British Columbia Advanced Care Planning Guide
 - OpenAI for GPT and Whisper APIs
-- pdf-lib for PDF manipulation
+- pdf-lib for client-side PDF manipulation
