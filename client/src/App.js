@@ -105,20 +105,21 @@ function App() {
       const pages = pdfDoc.getPages();
 
       // Add content to appropriate pages
-      // Pages 33, 34, and 35 (indices 32, 33, 34)
+      // Page 33: Beliefs
+      // Page 34: Values (upper section) and Wishes (lower section)
 
       if (pages.length > 32) {
         // Add Beliefs to page 33 (index 32)
+        // Text goes below "My beliefs (what gives my life meaning)"
         console.log('Adding beliefs to page 33...');
         const beliefsPage = pages[32];
-        const { height } = beliefsPage.getSize();
         const maxWidth = 450;
         const beliefsLines = wrapText(beliefs, maxWidth);
 
         beliefsLines.forEach((line, index) => {
           beliefsPage.drawText(line, {
             x: 70,
-            y: height - 250 - (index * lineHeight),
+            y: 520 - (index * lineHeight),  // Adjusted Y position for beliefs section
             size: fontSize,
             font: font,
             color: rgb(0, 0, 0)
@@ -128,37 +129,33 @@ function App() {
       }
 
       if (pages.length > 33) {
-        // Add Values to page 34 (index 33)
-        console.log('Adding values to page 34...');
+        // Add Values to page 34 (index 33) - upper section
+        // Text goes below "My values (what I care about in my life)"
+        console.log('Adding values to page 34 (upper section)...');
         const valuesPage = pages[33];
-        const { height } = valuesPage.getSize();
         const maxWidth = 450;
         const valuesLines = wrapText(values, maxWidth);
 
         valuesLines.forEach((line, index) => {
           valuesPage.drawText(line, {
             x: 70,
-            y: height - 250 - (index * lineHeight),
+            y: 550 - (index * lineHeight),  // Adjusted Y position for values section (upper)
             size: fontSize,
             font: font,
             color: rgb(0, 0, 0)
           });
         });
         console.log(`Values added (${valuesLines.length} lines)`);
-      }
 
-      if (pages.length > 34) {
-        // Add Wishes to page 35 (index 34)
-        console.log('Adding wishes to page 35...');
-        const wishesPage = pages[34];
-        const { height } = wishesPage.getSize();
-        const maxWidth = 450;
+        // Add Wishes to page 34 (index 33) - lower section
+        // Text goes below "My wishes (for future health care treatment...)"
+        console.log('Adding wishes to page 34 (lower section)...');
         const wishesLines = wrapText(wishes, maxWidth);
 
         wishesLines.forEach((line, index) => {
-          wishesPage.drawText(line, {
+          valuesPage.drawText(line, {
             x: 70,
-            y: height - 250 - (index * lineHeight),
+            y: 310 - (index * lineHeight),  // Adjusted Y position for wishes section (lower)
             size: fontSize,
             font: font,
             color: rgb(0, 0, 0)
