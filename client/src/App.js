@@ -49,6 +49,28 @@ function App() {
     setDownloadUrl(null);
 
     try {
+      // Validate input lengths (max 1262 characters each)
+      const MAX_CHARS = 1262;
+      const validationErrors = [];
+
+      if (beliefs.length > MAX_CHARS) {
+        validationErrors.push(`Beliefs: ${beliefs.length - MAX_CHARS} characters over the limit`);
+      }
+      if (values.length > MAX_CHARS) {
+        validationErrors.push(`Values: ${values.length - MAX_CHARS} characters over the limit`);
+      }
+      if (wishes.length > MAX_CHARS) {
+        validationErrors.push(`Wishes: ${wishes.length - MAX_CHARS} characters over the limit`);
+      }
+
+      // If there are validation errors, show them and stop
+      if (validationErrors.length > 0) {
+        const errorMessage = `Please shorten your input:\n\n${validationErrors.join('\n')}\n\nMaximum allowed: ${MAX_CHARS} characters per section.`;
+        alert(errorMessage);
+        setIsUpdating(false);
+        return;
+      }
+
       // Fetch the template PDF with placeholder text
       console.log('Fetching PDF template...');
       const baseUrl = window.location.pathname.endsWith('.html')
@@ -121,18 +143,25 @@ function App() {
         return result.buffer;
       }
 
-      // Define placeholder strings to search for in the PDF
-      const beliefsPlaceholder = '** Enter beliefs here **';
-      const valuesPlaceholder = '** Enter values here **';
-      const wishesPlaceholder = '** Enter wishes here **';
+      // Define placeholder strings to search for in the PDF (1262 chars each)
+      // These should match the exact placeholder text in the PDF
+      const PLACEHOLDER_LENGTH = 1262;
+      const beliefsPlaceholder = '** Enter beliefs here **' + ' '.repeat(PLACEHOLDER_LENGTH - '** Enter beliefs here **'.length);
+      const valuesPlaceholder = '** Enter values here **' + ' '.repeat(PLACEHOLDER_LENGTH - '** Enter values here **'.length);
+      const wishesPlaceholder = '** Enter wishes here **' + ' '.repeat(PLACEHOLDER_LENGTH - '** Enter wishes here **'.length);
 
-      // Function to prepare replacement text (no padding needed - just replace)
+      // Function to prepare replacement text - pad to exactly 1262 characters
       function prepareReplacementText(text) {
-        // Return the user's text as-is
+        const targetLength = 1262;
+        if (text.length < targetLength) {
+          // Pad with spaces to reach target length
+          return text + ' '.repeat(targetLength - text.length);
+        }
+        // Text is already validated to be <= 1262 chars, so just return it
         return text;
       }
 
-      // Replace placeholders with user input
+      // Replace placeholders with user input (padded to 1262 chars)
       console.log('Replacing beliefs placeholder...');
       pdfBytes = replacePDFText(pdfBytes, beliefsPlaceholder, prepareReplacementText(beliefs));
 

@@ -186,6 +186,10 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
     };
   }, []);
 
+  const MAX_CHARS = 1262;
+  const remainingChars = MAX_CHARS - value.length;
+  const isOverLimit = value.length > MAX_CHARS;
+
   return (
     <div className="acp-section">
       <label className="section-label">{title}</label>
@@ -197,6 +201,19 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
         placeholder={`Enter your ${sectionType} here or use the Record button to dictate...`}
         rows={6}
       />
+
+      <div className="char-counter" style={{
+        color: isOverLimit ? '#d32f2f' : '#666',
+        fontWeight: isOverLimit ? 'bold' : 'normal',
+        marginTop: '5px',
+        fontSize: '14px'
+      }}>
+        {isOverLimit ? (
+          <span>⚠️ Over limit by {Math.abs(remainingChars)} characters</span>
+        ) : (
+          <span>{value.length} / {MAX_CHARS} characters ({remainingChars} remaining)</span>
+        )}
+      </div>
 
       <div className="button-group">
         <button
