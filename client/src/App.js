@@ -99,12 +99,12 @@ function App() {
       const pages = pdfDoc.getPages();
 
       // Add content to appropriate pages
-      // Note: These coordinates may need adjustment based on the actual PDF structure
+      // Pages 33, 34, and 35 (indices 32, 33, 34)
 
-      if (pages.length > 2) {
-        // Add Beliefs to page 3 (index 2)
-        console.log('Adding beliefs to page 3...');
-        const beliefsPage = pages[2];
+      if (pages.length > 32) {
+        // Add Beliefs to page 33 (index 32)
+        console.log('Adding beliefs to page 33...');
+        const beliefsPage = pages[32];
         const { height } = beliefsPage.getSize();
         const maxWidth = 450;
         const beliefsLines = wrapText(beliefs, maxWidth);
@@ -121,10 +121,10 @@ function App() {
         console.log(`Beliefs added (${beliefsLines.length} lines)`);
       }
 
-      if (pages.length > 3) {
-        // Add Values to page 4 (index 3)
-        console.log('Adding values to page 4...');
-        const valuesPage = pages[3];
+      if (pages.length > 33) {
+        // Add Values to page 34 (index 33)
+        console.log('Adding values to page 34...');
+        const valuesPage = pages[33];
         const { height } = valuesPage.getSize();
         const maxWidth = 450;
         const valuesLines = wrapText(values, maxWidth);
@@ -141,10 +141,10 @@ function App() {
         console.log(`Values added (${valuesLines.length} lines)`);
       }
 
-      if (pages.length > 4) {
-        // Add Wishes to page 5 (index 4)
-        console.log('Adding wishes to page 5...');
-        const wishesPage = pages[4];
+      if (pages.length > 34) {
+        // Add Wishes to page 35 (index 34)
+        console.log('Adding wishes to page 35...');
+        const wishesPage = pages[34];
         const { height } = wishesPage.getSize();
         const maxWidth = 450;
         const wishesLines = wrapText(wishes, maxWidth);
