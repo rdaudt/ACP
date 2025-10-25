@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ACPSection from './components/ACPSection';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 function App() {
   const [apiKey, setApiKey] = useState('');
@@ -71,7 +71,7 @@ function App() {
         return;
       }
 
-      // Fetch the template PDF with placeholder text
+      // Fetch the template PDF
       console.log('Fetching PDF template...');
       const baseUrl = window.location.pathname.endsWith('.html')
         ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'))
@@ -84,97 +84,123 @@ function App() {
         throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
       }
 
-      let pdfBytes = await pdfResponse.arrayBuffer();
+      const pdfBytes = await pdfResponse.arrayBuffer();
       console.log(`PDF fetched successfully (${pdfBytes.byteLength} bytes)`);
 
-      // Function to replace text in PDF bytes
-      // Note: Replacement text will be truncated or padded to match search text length
-      function replacePDFText(bytes, searchText, replaceText) {
-        // Convert ArrayBuffer to Uint8Array
-        const uint8Array = new Uint8Array(bytes);
-
-        // Convert search text to bytes
-        const searchBytes = new TextEncoder().encode(searchText);
-
-        // Pad or truncate replace text to match search text length
-        let paddedReplaceText = replaceText;
-        if (replaceText.length < searchText.length) {
-          // Pad with spaces
-          paddedReplaceText = replaceText + ' '.repeat(searchText.length - replaceText.length);
-        } else if (replaceText.length > searchText.length) {
-          // Truncate to fit
-          paddedReplaceText = replaceText.substring(0, searchText.length);
-          console.log(`Warning: Text truncated to fit placeholder length (${searchText.length} chars)`);
-        }
-
-        const replaceBytes = new TextEncoder().encode(paddedReplaceText);
-
-        // Find and replace in the byte array
-        const result = new Uint8Array(uint8Array);
-        let modified = false;
-
-        // Search for the pattern
-        for (let i = 0; i <= result.length - searchBytes.length; i++) {
-          let match = true;
-          for (let j = 0; j < searchBytes.length; j++) {
-            if (result[i + j] !== searchBytes[j]) {
-              match = false;
-              break;
-            }
-          }
-
-          if (match) {
-            console.log(`Found placeholder "${searchText}" at position ${i}`);
-            // Replace with new text (same length guaranteed)
-            for (let j = 0; j < searchBytes.length; j++) {
-              result[i + j] = replaceBytes[j];
-            }
-            modified = true;
-            i += searchBytes.length - 1; // Skip past this replacement
-          }
-        }
-
-        if (modified) {
-          console.log(`Replaced "${searchText}" with "${replaceText.substring(0, 50)}${replaceText.length > 50 ? '...' : ''}"`);
-        } else {
-          console.warn(`Placeholder "${searchText}" not found in PDF`);
-        }
-
-        return result.buffer;
-      }
-
-      // Define placeholder strings to search for in the PDF (1262 chars each)
-      // These should match the exact placeholder text in the PDF
-      const PLACEHOLDER_LENGTH = 1262;
-      const beliefsPlaceholder = '** Enter beliefs here **' + ' '.repeat(PLACEHOLDER_LENGTH - '** Enter beliefs here **'.length);
-      const valuesPlaceholder = '** Enter values here **' + ' '.repeat(PLACEHOLDER_LENGTH - '** Enter values here **'.length);
-      const wishesPlaceholder = '** Enter wishes here **' + ' '.repeat(PLACEHOLDER_LENGTH - '** Enter wishes here **'.length);
-
-      // Function to prepare replacement text - pad to exactly 1262 characters
-      function prepareReplacementText(text) {
-        const targetLength = 1262;
-        if (text.length < targetLength) {
-          // Pad with spaces to reach target length
-          return text + ' '.repeat(targetLength - text.length);
-        }
-        // Text is already validated to be <= 1262 chars, so just return it
-        return text;
-      }
-
-      // Replace placeholders with user input (padded to 1262 chars)
-      console.log('Replacing beliefs placeholder...');
-      pdfBytes = replacePDFText(pdfBytes, beliefsPlaceholder, prepareReplacementText(beliefs));
-
-      console.log('Replacing values placeholder...');
-      pdfBytes = replacePDFText(pdfBytes, valuesPlaceholder, prepareReplacementText(values));
-
-      console.log('Replacing wishes placeholder...');
-      pdfBytes = replacePDFText(pdfBytes, wishesPlaceholder, prepareReplacementText(wishes));
-
-      // Load and save the PDF to ensure it's valid
-      console.log('Loading modified PDF...');
+      // Load PDF document
+      console.log('Loading PDF document...');
       const pdfDoc = await PDFDocument.load(pdfBytes);
       console.log(`PDF loaded successfully (${pdfDoc.getPageCount()} pages)`);
+
+      // Embed font
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const fontSize = 10;
+      const lineHeight = 12;
+
+      // Helper function to wrap text
+      function wrapText(text, maxWidth) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        words.forEach(word => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+          if (testWidth > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        });
+
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        return lines;
+      }
+
+      // Get pages
+      const pages = pdfDoc.getPages();
+
+      // Page 33 (index 32): Beliefs
+      if (pages.length > 32) {
+        const page = pages[32];
+        const { width, height } = page.getSize();
+
+        // Draw white rectangle to cover placeholder
+        page.drawRectangle({
+          x: 50,
+          y: height - 700,
+          width: width - 100,
+          height: 500,
+          color: rgb(1, 1, 1),
+        });
+
+        // Draw beliefs text
+        console.log('Adding beliefs to page 33...');
+        const maxWidth = width - 120;
+        const beliefsLines = wrapText(beliefs, maxWidth);
+
+        beliefsLines.forEach((line, index) => {
+          page.drawText(line, {
+            x: 70,
+            y: height - 250 - (index * lineHeight),
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0)
+          });
+        });
+        console.log(`Beliefs added (${beliefsLines.length} lines)`);
+      }
+
+      // Page 34 (index 33): Values (upper) and Wishes (lower)
+      if (pages.length > 33) {
+        const page = pages[33];
+        const { width, height } = page.getSize();
+        const maxWidth = width - 120;
+
+        // Draw white rectangle to cover placeholders (full page)
+        page.drawRectangle({
+          x: 50,
+          y: 50,
+          width: width - 100,
+          height: height - 100,
+          color: rgb(1, 1, 1),
+        });
+
+        // Draw values text (upper section)
+        console.log('Adding values to page 34 (upper section)...');
+        const valuesLines = wrapText(values, maxWidth);
+
+        valuesLines.forEach((line, index) => {
+          page.drawText(line, {
+            x: 70,
+            y: height - 250 - (index * lineHeight),
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0)
+          });
+        });
+        console.log(`Values added (${valuesLines.length} lines)`);
+
+        // Draw wishes text (lower section)
+        console.log('Adding wishes to page 34 (lower section)...');
+        const wishesLines = wrapText(wishes, maxWidth);
+
+        wishesLines.forEach((line, index) => {
+          page.drawText(line, {
+            x: 70,
+            y: height - 550 - (index * lineHeight),
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0)
+          });
+        });
+        console.log(`Wishes added (${wishesLines.length} lines)`);
+      }
 
       // Save the modified PDF
       console.log('Saving modified PDF...');
