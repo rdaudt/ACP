@@ -51,7 +51,13 @@ function App() {
     try {
       // Fetch the original PDF
       console.log('Fetching PDF template...');
-      const pdfResponse = await fetch(`${process.env.PUBLIC_URL}/myvoice-advancecareplanningguide.pdf`);
+      // Construct the PDF URL based on the current page location
+      const baseUrl = window.location.pathname.endsWith('.html')
+        ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'))
+        : window.location.pathname.replace(/\/$/, '');
+      const pdfUrl = `${window.location.origin}${baseUrl}/myvoice-advancecareplanningguide.pdf`;
+      console.log('PDF URL:', pdfUrl);
+      const pdfResponse = await fetch(pdfUrl);
 
       if (!pdfResponse.ok) {
         throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
