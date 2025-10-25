@@ -51,7 +51,7 @@ function App() {
     try {
       // Fetch the original PDF
       console.log('Fetching PDF template...');
-      const pdfResponse = await fetch('/myvoice-advancecareplanningguide.pdf');
+      const pdfResponse = await fetch(`${process.env.PUBLIC_URL}/myvoice-advancecareplanningguide.pdf`);
 
       if (!pdfResponse.ok) {
         throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
