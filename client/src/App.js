@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ACPSection from './components/ACPSection';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 
 function App() {
   const [apiKey, setApiKey] = useState('');
@@ -49,13 +49,12 @@ function App() {
     setDownloadUrl(null);
 
     try {
-      // Fetch the original PDF
+      // Fetch the template PDF with placeholder text
       console.log('Fetching PDF template...');
-      // Construct the PDF URL based on the current page location
       const baseUrl = window.location.pathname.endsWith('.html')
         ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'))
         : window.location.pathname.replace(/\/$/, '');
-      const pdfUrl = `${window.location.origin}${baseUrl}/myvoice-advancecareplanningguide.pdf`;
+      const pdfUrl = `${window.location.origin}${baseUrl}/myvoice-advancecareplanningguideForEditing.pdf`;
       console.log('PDF URL:', pdfUrl);
       const pdfResponse = await fetch(pdfUrl);
 
@@ -63,106 +62,81 @@ function App() {
         throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
       }
 
-      const pdfBytes = await pdfResponse.arrayBuffer();
+      let pdfBytes = await pdfResponse.arrayBuffer();
       console.log(`PDF fetched successfully (${pdfBytes.byteLength} bytes)`);
 
-      // Load PDF document
-      console.log('Loading PDF document...');
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      console.log(`PDF loaded successfully (${pdfDoc.getPageCount()} pages)`);
+      // Function to replace text in PDF bytes
+      function replacePDFText(bytes, searchText, replaceText) {
+        // Convert ArrayBuffer to Uint8Array
+        const uint8Array = new Uint8Array(bytes);
 
-      // Embed font
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const fontSize = 10;
-      const lineHeight = 12;
+        // Convert search and replace texts to bytes
+        const searchBytes = new TextEncoder().encode(searchText);
+        const replaceBytes = new TextEncoder().encode(replaceText);
 
-      // Helper function to wrap text
-      function wrapText(text, maxWidth) {
-        const words = text.split(' ');
-        const lines = [];
-        let currentLine = '';
+        // Find and replace in the byte array
+        const result = new Uint8Array(uint8Array);
+        let modified = false;
 
-        words.forEach(word => {
-          const testLine = currentLine ? `${currentLine} ${word}` : word;
-          const testWidth = font.widthOfTextAtSize(testLine, fontSize);
-
-          if (testWidth > maxWidth && currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
-          } else {
-            currentLine = testLine;
+        // Search for the pattern
+        for (let i = 0; i <= result.length - searchBytes.length; i++) {
+          let match = true;
+          for (let j = 0; j < searchBytes.length; j++) {
+            if (result[i + j] !== searchBytes[j]) {
+              match = false;
+              break;
+            }
           }
-        });
 
-        if (currentLine) {
-          lines.push(currentLine);
+          if (match) {
+            console.log(`Found placeholder at position ${i}`);
+            // Replace with new text (pad with spaces if needed)
+            for (let j = 0; j < searchBytes.length; j++) {
+              if (j < replaceBytes.length) {
+                result[i + j] = replaceBytes[j];
+              } else {
+                result[i + j] = 32; // space character
+              }
+            }
+            modified = true;
+            i += searchBytes.length - 1; // Skip past this replacement
+          }
         }
 
-        return lines;
+        if (modified) {
+          console.log(`Replaced "${searchText.substring(0, 20)}..." with "${replaceText.substring(0, 20)}..."`);
+        }
+
+        return result.buffer;
       }
 
-      // Get pages
-      const pages = pdfDoc.getPages();
+      // Create placeholder strings (matching the exact lengths in the PDF)
+      const beliefsPlaceholder = 'a'.repeat(1562);  // Beliefs placeholder
+      const valuesPlaceholder = 'b'.repeat(1278);   // Values placeholder
+      const wishesPlaceholder = 'c'.repeat(1422);   // Wishes placeholder
 
-      // Add content to appropriate pages
-      // Page 33: Beliefs
-      // Page 34: Values (upper section) and Wishes (lower section)
-
-      if (pages.length > 32) {
-        // Add Beliefs to page 33 (index 32)
-        // Text goes below "My beliefs (what gives my life meaning)"
-        console.log('Adding beliefs to page 33...');
-        const beliefsPage = pages[32];
-        const maxWidth = 450;
-        const beliefsLines = wrapText(beliefs, maxWidth);
-
-        beliefsLines.forEach((line, index) => {
-          beliefsPage.drawText(line, {
-            x: 70,
-            y: 520 - (index * lineHeight),  // Adjusted Y position for beliefs section
-            size: fontSize,
-            font: font,
-            color: rgb(0, 0, 0)
-          });
-        });
-        console.log(`Beliefs added (${beliefsLines.length} lines)`);
+      // Pad user text to match placeholder length
+      function padText(text, targetLength) {
+        if (text.length >= targetLength) {
+          return text.substring(0, targetLength);
+        }
+        return text + ' '.repeat(targetLength - text.length);
       }
 
-      if (pages.length > 33) {
-        // Add Values to page 34 (index 33) - upper section
-        // Text goes below "My values (what I care about in my life)"
-        console.log('Adding values to page 34 (upper section)...');
-        const valuesPage = pages[33];
-        const maxWidth = 450;
-        const valuesLines = wrapText(values, maxWidth);
+      // Replace placeholders with user input
+      console.log('Replacing beliefs placeholder...');
+      pdfBytes = replacePDFText(pdfBytes, beliefsPlaceholder, padText(beliefs, beliefsPlaceholder.length));
 
-        valuesLines.forEach((line, index) => {
-          valuesPage.drawText(line, {
-            x: 70,
-            y: 550 - (index * lineHeight),  // Adjusted Y position for values section (upper)
-            size: fontSize,
-            font: font,
-            color: rgb(0, 0, 0)
-          });
-        });
-        console.log(`Values added (${valuesLines.length} lines)`);
+      console.log('Replacing values placeholder...');
+      pdfBytes = replacePDFText(pdfBytes, valuesPlaceholder, padText(values, valuesPlaceholder.length));
 
-        // Add Wishes to page 34 (index 33) - lower section
-        // Text goes below "My wishes (for future health care treatment...)"
-        console.log('Adding wishes to page 34 (lower section)...');
-        const wishesLines = wrapText(wishes, maxWidth);
+      console.log('Replacing wishes placeholder...');
+      pdfBytes = replacePDFText(pdfBytes, wishesPlaceholder, padText(wishes, wishesPlaceholder.length));
 
-        wishesLines.forEach((line, index) => {
-          valuesPage.drawText(line, {
-            x: 70,
-            y: 310 - (index * lineHeight),  // Adjusted Y position for wishes section (lower)
-            size: fontSize,
-            font: font,
-            color: rgb(0, 0, 0)
-          });
-        });
-        console.log(`Wishes added (${wishesLines.length} lines)`);
-      }
+      // Load and save the PDF to ensure it's valid
+      console.log('Loading modified PDF...');
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      console.log(`PDF loaded successfully (${pdfDoc.getPageCount()} pages)`);
 
       // Save the modified PDF
       console.log('Saving modified PDF...');
