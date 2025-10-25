@@ -66,13 +66,26 @@ function App() {
       console.log(`PDF fetched successfully (${pdfBytes.byteLength} bytes)`);
 
       // Function to replace text in PDF bytes
+      // Note: Replacement text will be truncated or padded to match search text length
       function replacePDFText(bytes, searchText, replaceText) {
         // Convert ArrayBuffer to Uint8Array
         const uint8Array = new Uint8Array(bytes);
 
-        // Convert search and replace texts to bytes
+        // Convert search text to bytes
         const searchBytes = new TextEncoder().encode(searchText);
-        const replaceBytes = new TextEncoder().encode(replaceText);
+
+        // Pad or truncate replace text to match search text length
+        let paddedReplaceText = replaceText;
+        if (replaceText.length < searchText.length) {
+          // Pad with spaces
+          paddedReplaceText = replaceText + ' '.repeat(searchText.length - replaceText.length);
+        } else if (replaceText.length > searchText.length) {
+          // Truncate to fit
+          paddedReplaceText = replaceText.substring(0, searchText.length);
+          console.log(`Warning: Text truncated to fit placeholder length (${searchText.length} chars)`);
+        }
+
+        const replaceBytes = new TextEncoder().encode(paddedReplaceText);
 
         // Find and replace in the byte array
         const result = new Uint8Array(uint8Array);
@@ -89,14 +102,10 @@ function App() {
           }
 
           if (match) {
-            console.log(`Found placeholder at position ${i}`);
-            // Replace with new text (pad with spaces if needed)
+            console.log(`Found placeholder "${searchText}" at position ${i}`);
+            // Replace with new text (same length guaranteed)
             for (let j = 0; j < searchBytes.length; j++) {
-              if (j < replaceBytes.length) {
-                result[i + j] = replaceBytes[j];
-              } else {
-                result[i + j] = 32; // space character
-              }
+              result[i + j] = replaceBytes[j];
             }
             modified = true;
             i += searchBytes.length - 1; // Skip past this replacement
@@ -104,34 +113,34 @@ function App() {
         }
 
         if (modified) {
-          console.log(`Replaced "${searchText.substring(0, 20)}..." with "${replaceText.substring(0, 20)}..."`);
+          console.log(`Replaced "${searchText}" with "${replaceText.substring(0, 50)}${replaceText.length > 50 ? '...' : ''}"`);
+        } else {
+          console.warn(`Placeholder "${searchText}" not found in PDF`);
         }
 
         return result.buffer;
       }
 
-      // Create placeholder strings (matching the exact lengths in the PDF)
-      const beliefsPlaceholder = 'a'.repeat(1562);  // Beliefs placeholder
-      const valuesPlaceholder = 'b'.repeat(1278);   // Values placeholder
-      const wishesPlaceholder = 'c'.repeat(1422);   // Wishes placeholder
+      // Define placeholder strings to search for in the PDF
+      const beliefsPlaceholder = '** Enter beliefs here **';
+      const valuesPlaceholder = '** Enter values here **';
+      const wishesPlaceholder = '** Enter wishes here **';
 
-      // Pad user text to match placeholder length
-      function padText(text, targetLength) {
-        if (text.length >= targetLength) {
-          return text.substring(0, targetLength);
-        }
-        return text + ' '.repeat(targetLength - text.length);
+      // Function to prepare replacement text (no padding needed - just replace)
+      function prepareReplacementText(text) {
+        // Return the user's text as-is
+        return text;
       }
 
       // Replace placeholders with user input
       console.log('Replacing beliefs placeholder...');
-      pdfBytes = replacePDFText(pdfBytes, beliefsPlaceholder, padText(beliefs, beliefsPlaceholder.length));
+      pdfBytes = replacePDFText(pdfBytes, beliefsPlaceholder, prepareReplacementText(beliefs));
 
       console.log('Replacing values placeholder...');
-      pdfBytes = replacePDFText(pdfBytes, valuesPlaceholder, padText(values, valuesPlaceholder.length));
+      pdfBytes = replacePDFText(pdfBytes, valuesPlaceholder, prepareReplacementText(values));
 
       console.log('Replacing wishes placeholder...');
-      pdfBytes = replacePDFText(pdfBytes, wishesPlaceholder, padText(wishes, wishesPlaceholder.length));
+      pdfBytes = replacePDFText(pdfBytes, wishesPlaceholder, prepareReplacementText(wishes));
 
       // Load and save the PDF to ensure it's valid
       console.log('Loading modified PDF...');
