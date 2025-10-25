@@ -44,16 +44,26 @@ function App() {
   const allSectionsFilled = beliefs.trim() !== '' && values.trim() !== '' && wishes.trim() !== '';
 
   const handleUpdatePlan = async () => {
+    console.log('Starting PDF update process...');
     setIsUpdating(true);
     setDownloadUrl(null);
 
     try {
       // Fetch the original PDF
+      console.log('Fetching PDF template...');
       const pdfResponse = await fetch('/myvoice-advancecareplanningguide.pdf');
+
+      if (!pdfResponse.ok) {
+        throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
+      }
+
       const pdfBytes = await pdfResponse.arrayBuffer();
+      console.log(`PDF fetched successfully (${pdfBytes.byteLength} bytes)`);
 
       // Load PDF document
+      console.log('Loading PDF document...');
       const pdfDoc = await PDFDocument.load(pdfBytes);
+      console.log(`PDF loaded successfully (${pdfDoc.getPageCount()} pages)`);
 
       // Embed font
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -93,6 +103,7 @@ function App() {
 
       if (pages.length > 2) {
         // Add Beliefs to page 3 (index 2)
+        console.log('Adding beliefs to page 3...');
         const beliefsPage = pages[2];
         const { height } = beliefsPage.getSize();
         const maxWidth = 450;
@@ -107,10 +118,12 @@ function App() {
             color: rgb(0, 0, 0)
           });
         });
+        console.log(`Beliefs added (${beliefsLines.length} lines)`);
       }
 
       if (pages.length > 3) {
         // Add Values to page 4 (index 3)
+        console.log('Adding values to page 4...');
         const valuesPage = pages[3];
         const { height } = valuesPage.getSize();
         const maxWidth = 450;
@@ -125,10 +138,12 @@ function App() {
             color: rgb(0, 0, 0)
           });
         });
+        console.log(`Values added (${valuesLines.length} lines)`);
       }
 
       if (pages.length > 4) {
         // Add Wishes to page 5 (index 4)
+        console.log('Adding wishes to page 5...');
         const wishesPage = pages[4];
         const { height } = wishesPage.getSize();
         const maxWidth = 450;
@@ -143,19 +158,25 @@ function App() {
             color: rgb(0, 0, 0)
           });
         });
+        console.log(`Wishes added (${wishesLines.length} lines)`);
       }
 
       // Save the modified PDF
+      console.log('Saving modified PDF...');
       const modifiedPdfBytes = await pdfDoc.save();
+      console.log(`PDF saved successfully (${modifiedPdfBytes.length} bytes)`);
 
       // Create download URL
+      console.log('Creating download URL...');
       const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       setDownloadUrl(url);
+      console.log('PDF update complete! Download URL created.');
 
     } catch (error) {
       console.error('Error updating PDF:', error);
-      alert('Failed to update the Advanced Care Plan. Please try again.');
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Failed to update the Advanced Care Plan.\n\nError: ${errorMessage}\n\nPlease check the browser console for more details.`);
     } finally {
       setIsUpdating(false);
     }
