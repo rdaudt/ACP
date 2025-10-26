@@ -8,6 +8,7 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const intentionallyCancelledRef = useRef(false);
 
   // Get appropriate prompts for each section type
   const getExplainPrompt = () => {
@@ -21,15 +22,94 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
 
   const handleExplain = async () => {
     if (isSpeaking) {
-      // Stop current speech
+      // Stop current speech - mark as intentional cancellation
+      intentionallyCancelledRef.current = true;
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
       setIsExplaining(false);
       return;
     }
 
+    // Reset cancellation flag when starting new speech
+    intentionallyCancelledRef.current = false;
     setIsExplaining(true);
 
+    // Check if speech synthesis is supported
+    if (!('speechSynthesis' in window)) {
+      alert('Text-to-speech is not supported in your browser.');
+      setIsExplaining(false);
+      return;
+    }
+
+    // iOS Safari requires speechSynthesis.speak() to be called synchronously from user gesture
+    // Start with a placeholder message immediately to maintain the user gesture context
+    const placeholderUtterance = new SpeechSynthesisUtterance('Please wait, loading explanation...');
+    placeholderUtterance.rate = 0.9;
+    placeholderUtterance.pitch = 1;
+    placeholderUtterance.volume = 1;
+
+    // Track whether we have the real explanation ready
+    let realExplanation = null;
+    let explanationReady = false;
+
+    placeholderUtterance.onstart = () => {
+      setIsSpeaking(true);
+      console.log('Placeholder speech started');
+    };
+
+    placeholderUtterance.onend = () => {
+      console.log('Placeholder speech ended, explanationReady:', explanationReady);
+      // When placeholder ends, speak the real explanation if it's ready
+      if (explanationReady && realExplanation) {
+        speakExplanation(realExplanation);
+      }
+    };
+
+    placeholderUtterance.onerror = (event) => {
+      console.error('Placeholder speech error:', event);
+      setIsSpeaking(false);
+      setIsExplaining(false);
+      // Only show alert for actual errors, not intentional cancellations
+      if (!intentionallyCancelledRef.current && event.error !== 'cancelled' && event.error !== 'interrupted') {
+        alert('Failed to read the explanation aloud. Please check your browser settings.');
+      }
+    };
+
+    // Speak placeholder immediately (synchronously) - critical for iOS
+    window.speechSynthesis.speak(placeholderUtterance);
+
+    // Helper function to speak the actual explanation
+    const speakExplanation = (text) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        console.log('Real explanation speech started');
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setIsExplaining(false);
+        console.log('Real explanation speech ended');
+      };
+
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        setIsSpeaking(false);
+        setIsExplaining(false);
+        // Only show alert for actual errors, not intentional cancellations
+        if (!intentionallyCancelledRef.current && event.error !== 'cancelled' && event.error !== 'interrupted') {
+          alert('Failed to read the explanation aloud. Please check your browser settings.');
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    // Now fetch the explanation asynchronously
     try {
       // Initialize OpenAI client
       const openai = new OpenAI({
@@ -53,48 +133,32 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
         max_tokens: 500
       });
 
-      const explanation = completion.choices[0].message.content;
+      realExplanation = completion.choices[0].message.content;
+      explanationReady = true;
+      console.log('Explanation received from OpenAI');
 
-      // Use Web Speech API to read the explanation aloud
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(explanation);
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-
-        utterance.onstart = () => {
-          setIsSpeaking(true);
-        };
-
-        utterance.onend = () => {
-          setIsSpeaking(false);
-          setIsExplaining(false);
-        };
-
-        utterance.onerror = (event) => {
-          console.error('Speech synthesis error:', event);
-          setIsSpeaking(false);
-          setIsExplaining(false);
-          // Only show alert for actual errors, not for intentional cancellation
-          if (event.error !== 'cancelled' && event.error !== 'interrupted') {
-            alert('Failed to read the explanation aloud. Please check your browser settings.');
-          }
-        };
-
-        window.speechSynthesis.speak(utterance);
+      // If placeholder has already finished, speak the explanation now
+      // Otherwise, the placeholder's onend will handle it
+      if (!window.speechSynthesis.speaking) {
+        console.log('Placeholder already finished, speaking explanation now');
+        speakExplanation(realExplanation);
       } else {
-        alert('Text-to-speech is not supported in your browser.');
-        setIsExplaining(false);
+        console.log('Placeholder still speaking, will speak explanation when it ends');
       }
 
     } catch (error) {
       console.error('Error getting explanation:', error);
+      // Cancel any ongoing speech (this is intentional cleanup)
+      intentionallyCancelledRef.current = true;
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setIsExplaining(false);
+
       if (error.message.includes('API key')) {
         alert('Invalid API key. Please check your OpenAI API key and try again.');
       } else {
         alert('Failed to get explanation. Please try again.');
       }
-      setIsExplaining(false);
     }
   };
 
