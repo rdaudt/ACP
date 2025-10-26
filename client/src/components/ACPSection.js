@@ -8,6 +8,7 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const intentionallyCancelledRef = useRef(false);
 
   // Get appropriate prompts for each section type
   const getExplainPrompt = () => {
@@ -21,13 +22,16 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
 
   const handleExplain = async () => {
     if (isSpeaking) {
-      // Stop current speech
+      // Stop current speech - mark as intentional cancellation
+      intentionallyCancelledRef.current = true;
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
       setIsExplaining(false);
       return;
     }
 
+    // Reset cancellation flag when starting new speech
+    intentionallyCancelledRef.current = false;
     setIsExplaining(true);
 
     // Check if speech synthesis is supported
@@ -65,7 +69,8 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
       console.error('Placeholder speech error:', event);
       setIsSpeaking(false);
       setIsExplaining(false);
-      if (event.error !== 'cancelled' && event.error !== 'interrupted') {
+      // Only show alert for actual errors, not intentional cancellations
+      if (!intentionallyCancelledRef.current && event.error !== 'cancelled' && event.error !== 'interrupted') {
         alert('Failed to read the explanation aloud. Please check your browser settings.');
       }
     };
@@ -95,7 +100,8 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
         console.error('Speech synthesis error:', event);
         setIsSpeaking(false);
         setIsExplaining(false);
-        if (event.error !== 'cancelled' && event.error !== 'interrupted') {
+        // Only show alert for actual errors, not intentional cancellations
+        if (!intentionallyCancelledRef.current && event.error !== 'cancelled' && event.error !== 'interrupted') {
           alert('Failed to read the explanation aloud. Please check your browser settings.');
         }
       };
@@ -142,7 +148,8 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
 
     } catch (error) {
       console.error('Error getting explanation:', error);
-      // Cancel any ongoing speech
+      // Cancel any ongoing speech (this is intentional cleanup)
+      intentionallyCancelledRef.current = true;
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
       setIsExplaining(false);
