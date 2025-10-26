@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ACPSection from './components/ACPSection';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 
 function App() {
   const [apiKey, setApiKey] = useState('');
@@ -71,12 +71,12 @@ function App() {
         return;
       }
 
-      // Fetch the template PDF
-      console.log('Fetching PDF template...');
+      // Fetch the fillable PDF template
+      console.log('Fetching fillable PDF template...');
       const baseUrl = window.location.pathname.endsWith('.html')
         ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'))
         : window.location.pathname.replace(/\/$/, '');
-      const pdfUrl = `${window.location.origin}${baseUrl}/myvoice-advancecareplanningguideForEditing.pdf`;
+      const pdfUrl = `${window.location.origin}${baseUrl}/myvoice-advancecareplanningguide-fillable.pdf`;
       console.log('PDF URL:', pdfUrl);
       const pdfResponse = await fetch(pdfUrl);
 
@@ -92,135 +92,34 @@ function App() {
       const pdfDoc = await PDFDocument.load(pdfBytes);
       console.log(`PDF loaded successfully (${pdfDoc.getPageCount()} pages)`);
 
-      // Embed font
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const fontSize = 10;
-      const lineHeight = 12;
+      // Get the form from the PDF
+      console.log('Getting form fields...');
+      const form = pdfDoc.getForm();
+      const fields = form.getFields();
+      console.log(`Found ${fields.length} form fields`);
 
-      // Helper function to wrap text
-      function wrapText(text, maxWidth) {
-        const words = text.split(' ');
-        const lines = [];
-        let currentLine = '';
+      // Get the three text fields
+      const beliefsField = form.getTextField('MyBeliefsTxt');
+      const valuesField = form.getTextField('MyValuesTxt');
+      const wishesField = form.getTextField('MyWishesTxt');
 
-        words.forEach(word => {
-          const testLine = currentLine ? `${currentLine} ${word}` : word;
-          const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+      // Fill the fields with user input
+      console.log('Filling beliefs field...');
+      beliefsField.setText(beliefs);
+      console.log(`Beliefs set: "${beliefs.substring(0, 50)}..."`);
 
-          if (testWidth > maxWidth && currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
-          } else {
-            currentLine = testLine;
-          }
-        });
+      console.log('Filling values field...');
+      valuesField.setText(values);
+      console.log(`Values set: "${values.substring(0, 50)}..."`);
 
-        if (currentLine) {
-          lines.push(currentLine);
-        }
+      console.log('Filling wishes field...');
+      wishesField.setText(wishes);
+      console.log(`Wishes set: "${wishes.substring(0, 50)}..."`);
 
-        return lines;
-      }
-
-      // Get pages
-      const pages = pdfDoc.getPages();
-
-      // Page 33 (index 32): Beliefs
-      if (pages.length > 32) {
-        const page = pages[32];
-        const { width, height } = page.getSize();
-        console.log(`Page 33 size: ${width} x ${height}`);
-
-        // Draw white rectangle to cover placeholder
-        page.drawRectangle({
-          x: 50,
-          y: height - 700,
-          width: width - 100,
-          height: 500,
-          color: rgb(1, 1, 1),
-        });
-        console.log('White rectangle drawn on page 33');
-
-        // Draw beliefs text IN RED for debugging
-        console.log('Adding beliefs to page 33...');
-        const maxWidth = width - 120;
-        const beliefsLines = wrapText(beliefs, maxWidth);
-        console.log(`Beliefs text: "${beliefs.substring(0, 50)}..."`);
-        console.log(`Wrapped into ${beliefsLines.length} lines`);
-
-        beliefsLines.forEach((line, index) => {
-          const yPos = height - 250 - (index * lineHeight);
-          console.log(`Drawing line ${index} at y=${yPos}: "${line.substring(0, 30)}..."`);
-          page.drawText(line, {
-            x: 70,
-            y: yPos,
-            size: fontSize,
-            font: font,
-            color: rgb(1, 0, 0) // RED for visibility
-          });
-        });
-        console.log(`Beliefs added (${beliefsLines.length} lines in RED)`);
-      } else {
-        console.warn('Page 33 not found!');
-      }
-
-      // Page 34 (index 33): Values (upper) and Wishes (lower)
-      if (pages.length > 33) {
-        const page = pages[33];
-        const { width, height } = page.getSize();
-        console.log(`Page 34 size: ${width} x ${height}`);
-        const maxWidth = width - 120;
-
-        // Draw white rectangle to cover placeholders (full page)
-        page.drawRectangle({
-          x: 50,
-          y: 50,
-          width: width - 100,
-          height: height - 100,
-          color: rgb(1, 1, 1),
-        });
-        console.log('White rectangle drawn on page 34');
-
-        // Draw values text IN RED for debugging
-        console.log('Adding values to page 34 (upper section)...');
-        const valuesLines = wrapText(values, maxWidth);
-        console.log(`Values text: "${values.substring(0, 50)}..."`);
-        console.log(`Wrapped into ${valuesLines.length} lines`);
-
-        valuesLines.forEach((line, index) => {
-          const yPos = height - 250 - (index * lineHeight);
-          console.log(`Drawing line ${index} at y=${yPos}: "${line.substring(0, 30)}..."`);
-          page.drawText(line, {
-            x: 70,
-            y: yPos,
-            size: fontSize,
-            font: font,
-            color: rgb(1, 0, 0) // RED for visibility
-          });
-        });
-        console.log(`Values added (${valuesLines.length} lines in RED)`);
-
-        // Draw wishes text IN RED for debugging
-        console.log('Adding wishes to page 34 (lower section)...');
-        const wishesLines = wrapText(wishes, maxWidth);
-        console.log(`Wishes text: "${wishes.substring(0, 50)}..."`);
-        console.log(`Wrapped into ${wishesLines.length} lines`);
-
-        wishesLines.forEach((line, index) => {
-          const yPos = height - 550 - (index * lineHeight);
-          console.log(`Drawing line ${index} at y=${yPos}: "${line.substring(0, 30)}..."`);
-          page.drawText(line, {
-            x: 70,
-            y: yPos,
-            size: fontSize,
-            font: font,
-            color: rgb(1, 0, 0) // RED for visibility
-          });
-        });
-        console.log(`Wishes added (${wishesLines.length} lines in RED)`);
-      } else {
-        console.warn('Page 34 not found!');
-      }
+      // Optional: Flatten the form to make fields read-only
+      // Uncomment the next line if you want to prevent further editing
+      // form.flatten();
+      console.log('Form fields filled successfully');
 
       // Save the modified PDF
       console.log('Saving modified PDF...');
