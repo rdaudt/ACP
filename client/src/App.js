@@ -129,6 +129,7 @@ function App() {
       if (pages.length > 32) {
         const page = pages[32];
         const { width, height } = page.getSize();
+        console.log(`Page 33 size: ${width} x ${height}`);
 
         // Draw white rectangle to cover placeholder
         page.drawRectangle({
@@ -138,28 +139,36 @@ function App() {
           height: 500,
           color: rgb(1, 1, 1),
         });
+        console.log('White rectangle drawn on page 33');
 
-        // Draw beliefs text
+        // Draw beliefs text IN RED for debugging
         console.log('Adding beliefs to page 33...');
         const maxWidth = width - 120;
         const beliefsLines = wrapText(beliefs, maxWidth);
+        console.log(`Beliefs text: "${beliefs.substring(0, 50)}..."`);
+        console.log(`Wrapped into ${beliefsLines.length} lines`);
 
         beliefsLines.forEach((line, index) => {
+          const yPos = height - 250 - (index * lineHeight);
+          console.log(`Drawing line ${index} at y=${yPos}: "${line.substring(0, 30)}..."`);
           page.drawText(line, {
             x: 70,
-            y: height - 250 - (index * lineHeight),
+            y: yPos,
             size: fontSize,
             font: font,
-            color: rgb(0, 0, 0)
+            color: rgb(1, 0, 0) // RED for visibility
           });
         });
-        console.log(`Beliefs added (${beliefsLines.length} lines)`);
+        console.log(`Beliefs added (${beliefsLines.length} lines in RED)`);
+      } else {
+        console.warn('Page 33 not found!');
       }
 
       // Page 34 (index 33): Values (upper) and Wishes (lower)
       if (pages.length > 33) {
         const page = pages[33];
         const { width, height } = page.getSize();
+        console.log(`Page 34 size: ${width} x ${height}`);
         const maxWidth = width - 120;
 
         // Draw white rectangle to cover placeholders (full page)
@@ -170,36 +179,47 @@ function App() {
           height: height - 100,
           color: rgb(1, 1, 1),
         });
+        console.log('White rectangle drawn on page 34');
 
-        // Draw values text (upper section)
+        // Draw values text IN RED for debugging
         console.log('Adding values to page 34 (upper section)...');
         const valuesLines = wrapText(values, maxWidth);
+        console.log(`Values text: "${values.substring(0, 50)}..."`);
+        console.log(`Wrapped into ${valuesLines.length} lines`);
 
         valuesLines.forEach((line, index) => {
+          const yPos = height - 250 - (index * lineHeight);
+          console.log(`Drawing line ${index} at y=${yPos}: "${line.substring(0, 30)}..."`);
           page.drawText(line, {
             x: 70,
-            y: height - 250 - (index * lineHeight),
+            y: yPos,
             size: fontSize,
             font: font,
-            color: rgb(0, 0, 0)
+            color: rgb(1, 0, 0) // RED for visibility
           });
         });
-        console.log(`Values added (${valuesLines.length} lines)`);
+        console.log(`Values added (${valuesLines.length} lines in RED)`);
 
-        // Draw wishes text (lower section)
+        // Draw wishes text IN RED for debugging
         console.log('Adding wishes to page 34 (lower section)...');
         const wishesLines = wrapText(wishes, maxWidth);
+        console.log(`Wishes text: "${wishes.substring(0, 50)}..."`);
+        console.log(`Wrapped into ${wishesLines.length} lines`);
 
         wishesLines.forEach((line, index) => {
+          const yPos = height - 550 - (index * lineHeight);
+          console.log(`Drawing line ${index} at y=${yPos}: "${line.substring(0, 30)}..."`);
           page.drawText(line, {
             x: 70,
-            y: height - 550 - (index * lineHeight),
+            y: yPos,
             size: fontSize,
             font: font,
-            color: rgb(0, 0, 0)
+            color: rgb(1, 0, 0) // RED for visibility
           });
         });
-        console.log(`Wishes added (${wishesLines.length} lines)`);
+        console.log(`Wishes added (${wishesLines.length} lines in RED)`);
+      } else {
+        console.warn('Page 34 not found!');
       }
 
       // Save the modified PDF
