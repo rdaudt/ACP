@@ -75,7 +75,10 @@ const ACPSection = ({ title, value, onChange, sectionType, apiKey }) => {
           console.error('Speech synthesis error:', event);
           setIsSpeaking(false);
           setIsExplaining(false);
-          alert('Failed to read the explanation aloud. Please check your browser settings.');
+          // Only show alert for actual errors, not for intentional cancellation
+          if (event.error !== 'cancelled' && event.error !== 'interrupted') {
+            alert('Failed to read the explanation aloud. Please check your browser settings.');
+          }
         };
 
         window.speechSynthesis.speak(utterance);
