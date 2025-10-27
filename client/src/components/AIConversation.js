@@ -28,25 +28,11 @@ const AIConversation = ({ apiKey, beliefs, values, wishes }) => {
   const silenceTimerRef = useRef(null);
   const intentionallyCancelledRef = useRef(false);
   const streamRef = useRef(null);
-
-  // Detect iOS
-  const isIOS = () => {
-    return /iPhone|iPad|iPod/.test(navigator.userAgent);
-  };
+  const audioRef = useRef(null); // For OpenAI TTS audio playback
 
   // Check for Web Speech API support
   const isSpeechRecognitionSupported = () => {
     return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
-  };
-
-  // Initialize iOS speech synthesis context
-  const initializeIOSContext = () => {
-    if (isIOS()) {
-      const init = new SpeechSynthesisUtterance('');
-      init.volume = 0;
-      window.speechSynthesis.speak(init);
-      window.speechSynthesis.cancel();
-    }
   };
 
   // Get system prompt with current context
@@ -86,81 +72,85 @@ IMPORTANT:
 Begin by warmly greeting them and asking what they'd like to explore first.`;
   };
 
-  // Speak AI message using SpeechSynthesis
-  const speakAIMessage = (message) => {
-    return new Promise((resolve, reject) => {
-      if (!('speechSynthesis' in window)) {
-        reject(new Error('Speech synthesis not supported'));
-        return;
-      }
-
+  // Speak AI message using OpenAI TTS
+  const speakAIMessage = async (message) => {
+    try {
       // Reset cancellation flag
       intentionallyCancelledRef.current = false;
 
-      // For iOS, create and speak placeholder first
-      if (isIOS()) {
-        const placeholder = new SpeechSynthesisUtterance('');
-        placeholder.volume = 0.01;
-        placeholder.rate = 10;
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
+      });
 
-        placeholder.onend = () => {
-          speakActualMessage(message, resolve, reject);
+      console.log('Generating speech with OpenAI TTS...');
+
+      // Generate speech using OpenAI TTS
+      const response = await openai.audio.speech.create({
+        model: 'tts-1-hd',  // High quality model
+        voice: 'shimmer',    // Natural, friendly female voice
+        input: message,
+        speed: 0.95          // Slightly slower for clarity
+      });
+
+      // Get the audio data as a blob
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Create and play audio
+      return new Promise((resolve, reject) => {
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onloadeddata = () => {
+          console.log('Audio loaded, starting playback');
         };
 
-        placeholder.onerror = (event) => {
-          console.error('Placeholder error:', event);
-          speakActualMessage(message, resolve, reject);
+        audio.onplay = () => {
+          console.log('AI speech started');
         };
 
-        window.speechSynthesis.speak(placeholder);
-      } else {
-        speakActualMessage(message, resolve, reject);
-      }
-    });
-  };
+        audio.onended = () => {
+          console.log('AI speech ended');
+          URL.revokeObjectURL(audioUrl); // Clean up
+          audioRef.current = null;
+          resolve();
+        };
 
-  const speakActualMessage = (message, resolve, reject) => {
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 1;
+        audio.onerror = (event) => {
+          console.error('Audio playback error:', event);
+          URL.revokeObjectURL(audioUrl); // Clean up
+          audioRef.current = null;
+          if (!intentionallyCancelledRef.current) {
+            reject(new Error('Audio playback failed'));
+          } else {
+            resolve(); // Treat cancellation as normal completion
+          }
+        };
 
-    // Try to use a better quality voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(voice =>
-      voice.lang.startsWith('en') && (voice.name.includes('Enhanced') || voice.name.includes('Premium'))
-    ) || voices.find(voice => voice.lang.startsWith('en'));
+        // Start playback
+        audio.play().catch(error => {
+          console.error('Failed to play audio:', error);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          reject(error);
+        });
+      });
 
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+    } catch (error) {
+      console.error('Error generating speech:', error);
+      throw error;
     }
-
-    utterance.onstart = () => {
-      console.log('AI speech started');
-    };
-
-    utterance.onend = () => {
-      console.log('AI speech ended');
-      resolve();
-    };
-
-    utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
-      if (!intentionallyCancelledRef.current && event.error !== 'cancelled' && event.error !== 'interrupted') {
-        reject(new Error('Speech synthesis failed'));
-      } else {
-        resolve(); // Treat cancellation as normal completion
-      }
-    };
-
-    window.speechSynthesis.speak(utterance);
   };
 
   // Stop AI speaking
   const stopAISpeaking = () => {
-    if (window.speechSynthesis.speaking) {
+    if (audioRef.current) {
       intentionallyCancelledRef.current = true;
-      window.speechSynthesis.cancel();
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
   };
 
@@ -331,9 +321,6 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
       setConversationState(STATES.INITIALIZING);
       setErrorMessage('');
       setConversationHistory([]);
-
-      // Initialize iOS context
-      initializeIOSContext();
 
       // Get AI greeting
       const greeting = await getAIResponse("Hello, I'd like to talk about my advanced care planning.");
@@ -580,24 +567,12 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
       }
-      if (window.speechSynthesis.speaking) {
+      if (audioRef.current) {
         intentionallyCancelledRef.current = true;
-        window.speechSynthesis.cancel();
+        audioRef.current.pause();
+        audioRef.current = null;
       }
     };
-  }, []);
-
-  // Load voices when available
-  useEffect(() => {
-    if ('speechSynthesis' in window) {
-      // Load voices
-      window.speechSynthesis.getVoices();
-
-      // Some browsers require listening to voiceschanged event
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-      };
-    }
   }, []);
 
   return (
