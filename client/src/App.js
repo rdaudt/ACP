@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ACPSection from './components/ACPSection';
+import AIConversation from './components/AIConversation';
 import { PDFDocument } from 'pdf-lib';
 
 function App() {
@@ -207,6 +208,13 @@ function App() {
               onChange={setWishes}
               sectionType="wishes"
               apiKey={apiKey}
+            />
+
+            <AIConversation
+              apiKey={apiKey}
+              beliefs={beliefs}
+              values={values}
+              wishes={wishes}
             />
 
             <div className="update-section">
