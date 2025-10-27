@@ -222,11 +222,13 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
 
     recognition.onresult = (event) => {
       let interimTranscript = '';
+      let hasNewFinalResult = false;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           finalTranscript += transcript + ' ';
+          hasNewFinalResult = true;
         } else {
           interimTranscript += transcript;
         }
@@ -234,18 +236,20 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
 
       setLiveTranscript(finalTranscript + interimTranscript);
 
-      // Reset silence timer on new speech
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-      }
-
-      // Set new silence timer (2 seconds of silence = done speaking)
-      silenceTimerRef.current = setTimeout(() => {
-        if (conversationState === STATES.USER_SPEAKING) {
-          console.log('Silence detected, stopping recording');
-          stopUserSpeaking();
+      // Only reset silence timer if we got a final result or meaningful interim
+      if (hasNewFinalResult || interimTranscript.length > 0) {
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
         }
-      }, 2000);
+
+        // Set new silence timer (1.5 seconds of silence = done speaking)
+        silenceTimerRef.current = setTimeout(() => {
+          if (conversationState === STATES.USER_SPEAKING && finalTranscript.trim().length > 0) {
+            console.log('Silence detected, stopping recording');
+            stopUserSpeaking();
+          }
+        }, 1500);
+      }
     };
 
     recognition.onerror = (event) => {
@@ -520,9 +524,9 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
       case STATES.AI_SPEAKING:
         return 'AI is speaking...';
       case STATES.USER_SPEAKING:
-        return 'Listening to you...';
+        return 'Listening... (speak naturally, I\'ll detect when you pause)';
       case STATES.PROCESSING:
-        return 'Processing...';
+        return 'Processing your response...';
       case STATES.ERROR:
         return 'Error - please try again';
       default:
@@ -628,6 +632,15 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
             <div className="status-display">
               {getStatusLabel()}
             </div>
+
+            {conversationState === STATES.USER_SPEAKING && (
+              <button
+                onClick={stopUserSpeaking}
+                className="done-speaking-button"
+              >
+                Done Speaking
+              </button>
+            )}
 
             <button
               onClick={endConversation}
