@@ -88,7 +88,7 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
 
       // Generate speech using OpenAI TTS
       const response = await openai.audio.speech.create({
-        model: 'tts-1-hd',  // High quality model
+        model: 'tts-1',      // Standard model (faster generation, still high quality)
         voice: 'shimmer',    // Natural, friendly female voice
         input: message,
         speed: 0.95          // Slightly slower for clarity
