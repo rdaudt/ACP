@@ -331,9 +331,9 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
 
       await speakAIMessage(greeting);
 
-      // Move to ready state
-      setConversationState(STATES.READY);
+      // After greeting, automatically start listening
       setAiCurrentMessage('');
+      await startUserSpeaking();
 
     } catch (error) {
       console.error('Error starting conversation:', error);
@@ -404,10 +404,11 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
         streamRef.current = null;
       }
 
-      // If we got no transcript, return to ready state
+      // If we got no transcript, start listening again
       if (!webSpeechTranscript && !audioBlob) {
-        setErrorMessage('No speech detected. Please try again.');
-        setConversationState(STATES.READY);
+        setErrorMessage('No speech detected. Listening again...');
+        setTimeout(() => setErrorMessage(''), 2000);
+        await startUserSpeaking();
         return;
       }
 
@@ -421,8 +422,9 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
       const finalTranscript = whisperTranscript || webSpeechTranscript;
 
       if (!finalTranscript || finalTranscript.trim().length === 0) {
-        setErrorMessage('No speech detected. Please try again.');
-        setConversationState(STATES.READY);
+        setErrorMessage('No speech detected. Listening again...');
+        setTimeout(() => setErrorMessage(''), 2000);
+        await startUserSpeaking();
         return;
       }
 
@@ -455,15 +457,21 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
 
       await speakAIMessage(aiResponse);
 
-      // Move back to ready state
-      setConversationState(STATES.READY);
+      // After AI speaks, automatically start listening again for continuous conversation
       setAiCurrentMessage('');
+      await startUserSpeaking();
 
     } catch (error) {
       console.error('Error processing speech:', error);
-      setErrorMessage('Failed to process your speech. Please try again.');
-      setConversationState(STATES.READY);
-      setLiveTranscript('');
+      setErrorMessage('Failed to process your speech. Trying again...');
+      setTimeout(() => setErrorMessage(''), 2000);
+      // Try to continue conversation despite error
+      try {
+        await startUserSpeaking();
+      } catch (retryError) {
+        console.error('Failed to restart listening:', retryError);
+        setConversationState(STATES.ERROR);
+      }
     }
   };
 
@@ -503,43 +511,29 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
 
   // Main button handler
   const handleMainButton = () => {
-    switch (conversationState) {
-      case STATES.IDLE:
-        startConversation();
-        break;
-      case STATES.READY:
-        startUserSpeaking();
-        break;
-      case STATES.USER_SPEAKING:
-        stopUserSpeaking();
-        break;
-      case STATES.AI_SPEAKING:
-        skipAISpeaking();
-        break;
-      default:
-        break;
+    if (conversationState === STATES.IDLE) {
+      startConversation();
     }
+    // All other states are automatic, no button clicks needed
   };
 
-  // Get button label based on state
-  const getButtonLabel = () => {
+  // Get status label based on state
+  const getStatusLabel = () => {
     switch (conversationState) {
       case STATES.IDLE:
         return 'Talk to AI about beliefs, values and wishes';
       case STATES.INITIALIZING:
         return 'Starting conversation...';
       case STATES.AI_SPEAKING:
-        return 'AI is speaking... (click to skip)';
-      case STATES.READY:
-        return 'Click to Speak';
+        return 'AI is speaking...';
       case STATES.USER_SPEAKING:
-        return 'I\'m listening... (click when done)';
+        return 'Listening to you...';
       case STATES.PROCESSING:
-        return 'Thinking...';
+        return 'Processing...';
       case STATES.ERROR:
-        return 'Try Again';
+        return 'Error - please try again';
       default:
-        return 'Talk to AI';
+        return 'In conversation...';
     }
   };
 
@@ -583,7 +577,7 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
             onClick={handleMainButton}
             className="start-button"
           >
-            {getButtonLabel()}
+            {getStatusLabel()}
           </button>
         </div>
       )}
@@ -612,11 +606,6 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
                   <div className="dot"></div>
                   <div className="dot"></div>
                   <div className="dot"></div>
-                </div>
-              )}
-              {conversationState === STATES.READY && (
-                <div className="ready-indicator">
-                  <div className="ready-icon">✓</div>
                 </div>
               )}
               {conversationState === STATES.INITIALIZING && (
@@ -648,22 +637,16 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
           )}
 
           <div className="conversation-controls">
-            <button
-              onClick={handleMainButton}
-              className={getButtonClass()}
-              disabled={conversationState === STATES.PROCESSING || conversationState === STATES.INITIALIZING}
-            >
-              {getButtonLabel()}
-            </button>
+            <div className="status-display">
+              {getStatusLabel()}
+            </div>
 
-            {conversationState !== STATES.INITIALIZING && (
-              <button
-                onClick={endConversation}
-                className="end-button"
-              >
-                End Conversation
-              </button>
-            )}
+            <button
+              onClick={endConversation}
+              className="end-button"
+            >
+              End Conversation
+            </button>
           </div>
         </div>
       )}
