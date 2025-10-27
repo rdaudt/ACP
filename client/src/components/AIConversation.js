@@ -475,13 +475,6 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
     }
   };
 
-  // Skip AI speaking
-  const skipAISpeaking = () => {
-    stopAISpeaking();
-    setConversationState(STATES.READY);
-    setAiCurrentMessage('');
-  };
-
   // End conversation
   const endConversation = () => {
     // Stop all ongoing activities
@@ -535,11 +528,6 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
       default:
         return 'In conversation...';
     }
-  };
-
-  // Get button class based on state
-  const getButtonClass = () => {
-    return `main-button ${conversationState}`;
   };
 
   // Cleanup on unmount
