@@ -72,7 +72,7 @@ IMPORTANT:
 Begin by warmly greeting them and asking what they'd like to explore first.`;
   };
 
-  // Speak AI message using OpenAI TTS with streaming
+  // Speak AI message using OpenAI TTS
   const speakAIMessage = async (message) => {
     try {
       // Reset cancellation flag
@@ -84,110 +84,60 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
         dangerouslyAllowBrowser: true
       });
 
-      console.log('Generating speech with OpenAI TTS (streaming)...');
+      console.log('Generating speech with OpenAI TTS...');
 
-      // Generate speech using OpenAI TTS with streaming
+      // Generate speech using OpenAI TTS
       const response = await openai.audio.speech.create({
-        model: 'tts-1',      // Standard model (faster generation, still high quality)
+        model: 'tts-1',      // Standard model (faster than HD)
         voice: 'shimmer',    // Natural, friendly female voice
         input: message,
-        speed: 0.95,         // Slightly slower for clarity
-        response_format: 'mp3' // Use MP3 for better streaming support
+        speed: 0.95          // Slightly slower for clarity
       });
 
-      // Collect audio chunks from stream
-      console.log('Receiving audio stream...');
-      const chunks = [];
-      const reader = response.body.getReader();
+      // Get the complete audio data as a blob
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Read first chunk to start playback quickly
-      const { value: firstChunk, done: firstDone } = await reader.read();
-      if (!firstDone && firstChunk) {
-        chunks.push(firstChunk);
-        console.log('First chunk received, preparing playback...');
-      }
+      console.log('Audio ready, starting playback...');
 
-      // Continue reading remaining chunks in background
-      const readRemainingChunks = async () => {
-        try {
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            chunks.push(value);
-          }
-          console.log('All audio chunks received');
-        } catch (error) {
-          console.error('Error reading audio stream:', error);
-        }
-      };
-
-      // Start reading remaining chunks (don't wait)
-      readRemainingChunks();
-
-      // Create blob from chunks received so far and start playing
-      // We'll create a new blob URL as chunks arrive
+      // Create and play audio
       return new Promise((resolve, reject) => {
-        let hasStartedPlaying = false;
-        let audioUrl = null;
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
 
-        const playAudio = () => {
-          if (intentionallyCancelledRef.current) {
-            resolve();
-            return;
-          }
-
-          // Create blob from all chunks received so far
-          const audioBlob = new Blob(chunks, { type: 'audio/mpeg' });
-
-          // Clean up old URL if exists
-          if (audioUrl) {
-            URL.revokeObjectURL(audioUrl);
-          }
-
-          audioUrl = URL.createObjectURL(audioBlob);
-          const audio = new Audio(audioUrl);
-          audioRef.current = audio;
-
-          audio.onloadeddata = () => {
-            if (!hasStartedPlaying) {
-              console.log('Audio loaded, starting playback');
-              hasStartedPlaying = true;
-            }
-          };
-
-          audio.onplay = () => {
-            console.log('AI speech started');
-          };
-
-          audio.onended = () => {
-            console.log('AI speech ended');
-            URL.revokeObjectURL(audioUrl);
-            audioRef.current = null;
-            resolve();
-          };
-
-          audio.onerror = (event) => {
-            console.error('Audio playback error:', event);
-            URL.revokeObjectURL(audioUrl);
-            audioRef.current = null;
-            if (!intentionallyCancelledRef.current) {
-              reject(new Error('Audio playback failed'));
-            } else {
-              resolve();
-            }
-          };
-
-          // Start playback
-          audio.play().catch(error => {
-            console.error('Failed to play audio:', error);
-            URL.revokeObjectURL(audioUrl);
-            audioRef.current = null;
-            reject(error);
-          });
+        audio.onloadeddata = () => {
+          console.log('Audio loaded');
         };
 
-        // Start playing with first chunk (low latency)
-        playAudio();
+        audio.onplay = () => {
+          console.log('AI speech started');
+        };
+
+        audio.onended = () => {
+          console.log('AI speech ended');
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          resolve();
+        };
+
+        audio.onerror = (event) => {
+          console.error('Audio playback error:', event);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          if (!intentionallyCancelledRef.current) {
+            reject(new Error('Audio playback failed'));
+          } else {
+            resolve();
+          }
+        };
+
+        // Start playback
+        audio.play().catch(error => {
+          console.error('Failed to play audio:', error);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          reject(error);
+        });
       });
 
     } catch (error) {
