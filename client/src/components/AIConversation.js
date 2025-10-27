@@ -564,7 +564,26 @@ Begin by warmly greeting them and asking what they'd like to explore first.`;
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      endConversation();
+      // Cleanup function - stop all activities
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      if (window.speechSynthesis.speaking) {
+        intentionallyCancelledRef.current = true;
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
